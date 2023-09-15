@@ -1,0 +1,91 @@
+{{ if .Values.debug }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: debugutils
+  namespace: default
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: debugutils
+rules:
+  - apiGroups: ["*"]
+    resources: ["*"]
+    verbs: ["*"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: debugutils
+subjects:
+  - kind: ServiceAccount
+    name: debugutils
+    namespace: default
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: debugutils
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: debugutils
+  namespace: default
+rules:
+  - apiGroups: ["*"]
+    resources: ["*"]
+    verbs: ["*"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: debugutils
+  namespace: default
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: debugutils
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: debugutils
+  namespace: default
+spec:
+  containers:
+  - name: debugutils
+    image: ubuntu:23.04
+    command: ["/bin/bash", "-c"]
+    args:
+      - apt-get update -y || exit 1;
+        apt-get install curl net-tools tcpdump -y || exit 1;
+        ETCD_VER=v3.4.24;
+        GOOGLE_URL=https://storage.googleapis.com/etcd;
+        GITHUB_URL=https://github.com/etcd-io/etcd/releases/download;
+        DOWNLOAD_URL=${GOOGLE_URL};
+        rm -f /tmp/etcd-${ETCD_VER}-linux-amd64.tar.gz;
+        rm -rf /tmp/etcd-download-test && mkdir -p /tmp/etcd-download-test;
+        curl -L ${DOWNLOAD_URL}/${ETCD_VER}/etcd-${ETCD_VER}-linux-amd64.tar.gz -o /tmp/etcd-${ETCD_VER}-linux-amd64.tar.gz;
+        tar xzvf /tmp/etcd-${ETCD_VER}-linux-amd64.tar.gz -C /tmp/etcd-download-test --strip-components=1;
+        rm -f /tmp/etcd-${ETCD_VER}-linux-amd64.tar.gz;
+        /tmp/etcd-download-test/etcd --version;
+        /tmp/etcd-download-test/etcdctl version;
+        mv /tmp/etcd-download-test/etcd /usr/bin/etcd;
+        mv /tmp/etcd-download-test/etcdctl /usr/bin/etcdctl;
+        sleep infinity;
+    imagePullPolicy: IfNotPresent
+    securityContext:
+      capabilities:
+        add:
+          - NET_ADMIN
+          - NET_BIND_SERVICE
+          - NET_BROADCAST
+          - NET_RAW
+    resources:
+      limits:
+        cpu: 500m
+        memory: 500Mi
+  restartPolicy: Always
+  serviceAccount: debugutils
+{{- end }}

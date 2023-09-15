@@ -1,0 +1,118 @@
+{{ if .Values.autoscaling.failureModes.enable }}
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: autoscaling
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: connectivity-server
+  namespace: autoscaling
+spec:
+  type: ClusterIP
+  internalTrafficPolicy: {{ .Values.autoscaling.failureModes.internalTrafficPolicy | default "Cluster" }}
+  ports:
+  - port: 9999
+    targetPort: 9999
+  selector:
+    app: connectivity-server
+    role: receiver
+---
+{{ if .Values.autoscaling.senderReceiver.enable }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: connectivity-all-server
+  namespace: autoscaling
+spec:
+  selector:
+    matchLabels:
+      app: connectivity-server
+  template:
+    metadata:
+      labels:
+        app: connectivity-server
+        role: receiver
+    spec:
+      containers:
+      - name: connectivity-server
+        image: localhost:5000/connectivity-server:local-testing
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 9999
+        env:
+          - name: ENABLE_SENDER
+            value: "true"
+          - name: ENABLE_RECEIVER
+            value: "true"
+          - name: ENABLE_METRICS
+            value: "true"
+{{- end }}
+---
+{{ if .Values.autoscaling.sender.enable }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: connectivity-sender-server
+  namespace: autoscaling
+spec:
+  selector:
+    matchLabels:
+      app: connectivity-server
+      role: sender
+  replicas: {{ .Values.autoscaling.sender.replicas | default 3 }}
+  template:
+    metadata:
+      labels:
+        app: connectivity-server
+        role: sender
+    spec:
+      containers:
+      - name: connectivity-sender-server
+        image: localhost:5000/connectivity-server:local-testing
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 9999
+        env:
+          - name: ENABLE_SENDER
+            value: "true"
+          - name: ENABLE_RECEIVER
+            value: "false"
+          - name: ENABLE_METRICS
+            value: "true"
+{{- end }}
+---
+{{ if .Values.autoscaling.receiver.enable }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: connectivity-receiver-server
+  namespace: autoscaling
+spec:
+  selector:
+    matchLabels:
+      app: connectivity-server
+      role: receiver
+  replicas: {{ .Values.autoscaling.receiver.replicas | default 3 }}
+  template:
+    metadata:
+      labels:
+        app: connectivity-server
+        role: receiver
+    spec:
+      containers:
+      - name: connectivity-server
+        image: localhost:5000/connectivity-server:local-testing
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 9999
+        env:
+        - name: ENABLE_SENDER
+          value: "false"
+        - name: ENABLE_RECEIVER
+          value: "true"
+        - name: ENABLE_METRICS
+          value: "true"
+{{- end }}
+{{- end }}

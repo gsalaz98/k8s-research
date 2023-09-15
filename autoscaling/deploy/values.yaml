@@ -1,0 +1,11 @@
+autoscaling:
+  failureModes:
+    enable: true
+  senderReceiver:
+    enable: false
+  sender:
+    enable: true
+    replicas: 2
+  receiver:
+    enable: true
+    replicas: 2

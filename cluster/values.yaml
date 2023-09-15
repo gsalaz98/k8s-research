@@ -1,0 +1,13 @@
+# Set to true if you want to install all the monitoring and etcd stack
+initialInstall: false
+# Set to true if you want to spawn a debug pod
+debug: false
+etcd:
+  # Set to true to enable an additional etcd cluster that is not running on the control plane
+  # but instead on the worker nodes
+  enable: false
+# Configures prometheus install, if desired
+monitoring:
+  enable: true
+ceph:
+  enable: false

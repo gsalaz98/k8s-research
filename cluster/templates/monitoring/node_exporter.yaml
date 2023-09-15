@@ -1,0 +1,64 @@
+{{ if .Values.monitoring.enable }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: node-exporter-textfile
+  namespace: monitoring
+  labels:
+    cluster-app: node-exporter
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: node-exporter
+  namespace: monitoring
+  labels:
+    cluster-app: node-exporter
+spec:
+  selector:
+    matchLabels:
+      cluster-app: node-exporter
+  template:
+    metadata:
+      labels:
+        cluster-app: node-exporter
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9100"
+    spec:
+      containers:
+      - name: node-exporter
+        image: quay.io/prometheus/node-exporter:v1.5.0
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 9100
+          protocol: TCP
+        args:
+        - --path.procfs=/host/proc
+        - --path.sysfs=/host/sys
+        - --collector.filesystem.ignored-mount-points=^/(sys|proc|dev|host|etc|rootfs/var/lib/docker/containers|rootfs/var/lib/kubelet)($|/)
+        - --collector.filesystem.ignored-fs-types=^(autofs|binfmt_misc|bpf|cgroup|configfs|debugfs|devpts|devtmpfs|fusectl|hugetlbfs|mqueue|overlay|proc|procfs|pstore|rpc_pipefs|securityfs|sysfs|tracefs|squashfs)$
+        - --collector.textfile.directory=/etc/node-exporter/
+        securityContext:
+          privileged: true
+        volumeMounts:
+        - name: proc
+          mountPath: /host/proc
+          readOnly: true
+        - name: sys
+          mountPath: /host/sys
+          readOnly: true
+        - name: textfile
+          mountPath: /etc/node-exporter/
+      volumes:
+      - name: proc
+        hostPath:
+          path: /proc
+      - name: sys
+        hostPath:
+          path: /sys
+      - name: textfile
+        configMap:
+          name: node-exporter-textfile
+          defaultMode: 420
+{{- end }}

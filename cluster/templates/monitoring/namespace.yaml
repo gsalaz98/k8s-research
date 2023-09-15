@@ -1,0 +1,6 @@
+{{ if .Values.monitoring.enable }}
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: monitoring
+{{- end }}

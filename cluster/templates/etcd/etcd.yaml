@@ -1,0 +1,101 @@
+{{ if .Values.etcd.enable }}
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: etcd
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: etcd-server
+  namespace: etcd
+spec:
+  ports:
+  - port: 2379
+    protocol: TCP
+    targetPort: 2379
+    name: client
+  - port: 2380
+    protocol: TCP
+    targetPort: 2380
+    name: peer
+  selector:
+    cluster-app: etcd-server
+  sessionAffinity: None
+  type: ClusterIP
+---
+{{- range tuple 0 1 2 }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: etcd-server-{{ . }}
+  namespace: etcd
+spec:
+  ports:
+  - port: 2379
+    protocol: TCP
+    targetPort: 2379
+    name: client
+  - port: 2380
+    protocol: TCP
+    targetPort: 2380
+    name: peer
+  selector:
+    etcd-server: {{ . | quote }}
+  sessionAffinity: None
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: etcd-server-{{ . }}
+  namespace: etcd
+spec:
+  selector:
+    matchLabels:
+      cluster-app: etcd-server
+      etcd-server: {{ . | quote }}
+  serviceName: etcd-server-{{ . }}
+  replicas: 1
+  template:
+    metadata:
+      namespace: etcd
+      labels:
+        cluster-app: etcd-server
+        etcd-server: {{ . | quote }}
+    spec:
+      containers:
+      - name: etcd-server
+        image: bitnami/etcd:3.5.7
+        imagePullPolicy: IfNotPresent
+        command: ["etcd"]
+        args:
+        - --name=etcd{{ . }}
+        - --data-dir=/var/etcd/data
+        - --listen-client-urls=http://0.0.0.0:2379
+        - --listen-peer-urls=http://0.0.0.0:2380
+        - --initial-cluster-state=new
+        - --initial-cluster=etcd0=http://etcd-server-0.etcd.svc.cluster.local:2380,etcd1=http://etcd-server-1.etcd.svc.cluster.local:2380,etcd2=http://etcd-server-2.etcd.svc.cluster.local:2380
+        - --advertise-client-urls=http://etcd-server-{{ . }}.etcd.svc.cluster.local:2379
+        - --initial-advertise-peer-urls=http://etcd-server-{{ . }}.etcd.svc.cluster.local:2380
+        ports:
+        - containerPort: 2379
+          name: client
+        - containerPort: 2380
+          name: peer
+        resources:
+          requests:
+            cpu: 1000m
+            memory: 1Gi
+          limits:
+            cpu: 1500m
+            memory: 2Gi
+        volumeMounts:
+        - name: etcd-data
+          mountPath: /var/etcd/data
+      volumes:
+      - name: etcd-data
+        emptyDir: {}
+---
+{{- end }}
+{{- end }}
