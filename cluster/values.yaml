@@ -5,7 +5,7 @@ debug: false
 etcd:
   # Set to true to enable an additional etcd cluster that is not running on the control plane
   # but instead on the worker nodes
-  enable: false
+  enable: true
 # Configures prometheus install, if desired
 monitoring:
   enable: true

@@ -50,6 +50,19 @@ roleRef:
   name: prometheus-cr
   apiGroup: rbac.authorization.k8s.io
 ---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: prometheus-storage-pv-claim
+  namespace: monitoring
+spec:
+  storageClassName: rook-ceph-block
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Ti
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -65,6 +78,17 @@ spec:
       labels:
         cluster-app: prometheus
     spec:
+      initContainers:
+      - name: app-data-permission-fix
+        image: busybox
+        command: ["/bin/chmod","-R","777","/prometheus"]
+        volumeMounts:
+        - name: storage-volume
+          mountPath: /prometheus/
+        securityContext:
+          runAsGroup: 0
+          runAsNonRoot: false
+          runAsUser: 0
       containers:
       - name: prometheus
         image: prom/prometheus:v2.30.3
@@ -84,6 +108,7 @@ spec:
         configMap:
           name: prometheus-config
       - name: storage-volume
-        emptyDir: {}
+        persistentVolumeClaim:
+          claimName: prometheus-storage-pv-claim
       serviceAccountName: prometheus-sa
 {{- end }}

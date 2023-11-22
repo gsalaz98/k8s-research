@@ -1,4 +1,4 @@
-{{ if .Values.etcd.enable }}
+{{- if .Values.etcd.enable }}
 apiVersion: v1
 kind: Namespace
 metadata:
