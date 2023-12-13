@@ -1,14 +1,9 @@
 {{- if .Values.etcd.enable }}
 apiVersion: v1
-kind: Namespace
-metadata:
-  name: etcd
----
-apiVersion: v1
 kind: Service
 metadata:
   name: etcd-server
-  namespace: etcd
+  namespace: databases
 spec:
   ports:
   - port: 2379
@@ -29,7 +24,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: etcd-server-{{ . }}
-  namespace: etcd
+  namespace: databases
 spec:
   ports:
   - port: 2379
@@ -49,7 +44,7 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: etcd-server-{{ . }}
-  namespace: etcd
+  namespace: databases
 spec:
   selector:
     matchLabels:
@@ -59,7 +54,7 @@ spec:
   replicas: 1
   template:
     metadata:
-      namespace: etcd
+      namespace: databases
       labels:
         cluster-app: etcd-server
         etcd-server: {{ . | quote }}

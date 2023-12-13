@@ -9,5 +9,7 @@ etcd:
 # Configures prometheus install, if desired
 monitoring:
   enable: true
-ceph:
-  enable: false
+certManager:
+  enable: true
+neo4j:
+  enable: true

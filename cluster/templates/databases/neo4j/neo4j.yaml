@@ -1,0 +1,89 @@
+{{- if .Values.neo4j.enable }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: neo4j-server
+  namespace: databases
+spec:
+  ports:
+  - port: 7474
+    protocol: TCP
+    targetPort: 7474
+    nodePort: 32765
+    name: web-client
+  - port: 7687
+    protocol: TCP
+    nodePort: 32766
+    targetPort: 7687
+    name: server
+  selector:
+    cluster-app: neo4j-server
+  sessionAffinity: None
+  type: NodePort
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: neo4j-server
+  namespace: databases
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: neo4j-server-pv-claim
+  namespace: databases
+spec:
+  storageClassName: rook-ceph-block
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Ti
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: neo4j-server
+  namespace: databases
+spec:
+  selector:
+    matchLabels:
+      cluster-app: neo4j-server
+  serviceName: neo4j-server
+  replicas: 1
+  template:
+    metadata:
+      namespace: databases
+      labels:
+        cluster-app: neo4j-server
+    spec:
+      containers:
+      - name: neo4j-server
+        image: neo4j:4.4
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: "NEO4J_AUTH"
+          value: "none"
+        ports:
+        - containerPort: 7474
+          name: web-client
+        - containerPort: 7687
+          name: server
+        resources:
+          requests:
+            cpu: 250m
+            memory: 1Gi
+          limits:
+            cpu: 500m
+            memory: 2Gi
+        volumeMounts:
+        - name: neo4j-data
+          mountPath: /data
+      volumes:
+      - name: neo4j-data
+        persistentVolumeClaim:
+          claimName: neo4j-server-pv-claim
+      serviceAccountName: neo4j-server
+---
+{{- end }}
